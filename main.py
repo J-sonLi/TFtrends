@@ -5,8 +5,9 @@ import urllib
 import ssl
 from collections import defaultdict
 
-# Get Riot development API key
-# https://developer.riotgames.com/
+
+# User-Agent can be found at https://www.whatismybrowser.com/detect/what-is-my-user-agent
+# Get Riot development API key at https://developer.riotgames.com/
 
 header = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
