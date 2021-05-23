@@ -82,7 +82,17 @@ for i, j in zip(playerList, range(8)):
     i.puuid = get_puuid(i.name)
     i.matchlist = get_matchList(i.puuid)
     i.champmap = get_champsPLayed(i.name, i.puuid, i.matchlist, i.champmap)
-    print(i.name, i.champmap)
+
+
+    print(i.name)
+    i.champmap = sorted(i.champmap.items(), key=lambda x:x[1])
+    for a in i.champmap:
+        print(a)
+
+
+
+
+
 
 
 
