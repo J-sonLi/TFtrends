@@ -130,3 +130,7 @@ dmypy.json
 
 # .idea
 .idea
+
+# temp files
+tempgame.json
+test_main.py
