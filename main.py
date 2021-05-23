@@ -1,3 +1,4 @@
+import sys
 import requests
 import json
 import os
@@ -5,6 +6,7 @@ import urllib
 import ssl
 from collections import defaultdict
 import time
+
 
 # User-Agent can be found at https://www.whatismybrowser.com/detect/what-is-my-user-agent
 # Get Riot development API key at https://developer.riotgames.com/
@@ -41,8 +43,8 @@ def get_puuid(self):
 
 
 # Takes in puuid and returns match history list
-def get_matchList(self):
-    match_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/' + self.puuid + '/ids?count=5'
+def get_matchList(self, count):
+    match_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/' + self.puuid + '/ids?count=' + str(count)
     match_response = requests.get(url=match_url, headers=header)
     match_json = match_response.json()
     return match_json
@@ -52,18 +54,34 @@ def get_matchList(self):
 #player_name, player_puuid, player_matchlist, player_champmap
 def get_champsPLayed(self):
     for player_match in self.matchlist:
-
         matchid_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/' + player_match
         matchid_response = requests.get(url=matchid_url, headers=header)
         matchid_json = matchid_response.json()
-        #print(player_match)
-        #if len(matchid_json['info']['participants'])== 8:
-        for j in range(8):
-    #         # Checks for correct PUUID and correct set number
-            if matchid_json['info']['participants'][j]['puuid']==self.puuid and matchid_json['info']['tft_set_number'] == 5:
-                for champions in matchid_json['info']['participants'][j]['units']:
-                        self.champmap[champions['character_id']] += 1
+        for attempt in range(2):
+            try:
+                #print(player_match)
+                #if len(matchid_json['info']['participants'])== 8:
+                for j in range(8):
+                    # Checks for correct PUUID and current set number (Set 5)
+                    if matchid_json['info']['participants'][j]['puuid']==self.puuid and matchid_json['info']['tft_set_number'] == 5:
+                        for champions in matchid_json['info']['participants'][j]['units']:
+                                self.champmap[champions['character_id']] += 1
+                        break
                 break
+            except KeyError:
+                print(matchid_json['status'])
+                time.sleep(1)
+        else:
+            print("An error has occured")
+            sys.exit()
+
+    return self.champmap
+
+
+# prints champmap
+def sort_champmap(self):
+    self.champmap = sorted(player.champmap.items(), key=lambda x: x[1])
+    #print(self.champmap)
     return self.champmap
 
 
@@ -82,14 +100,10 @@ for player, j in zip(playerList, range(8)):
     # print(i)
     player.name = live_response[j]['summonerName']
     player.puuid = get_puuid(player)
-    player.matchlist = get_matchList(player)
+    player.matchlist = get_matchList(player,10)
     player.champmap = get_champsPLayed(player)
-    #
-    #
     print(player.name)
-    player.champmap = sorted(player.champmap.items(), key=lambda x:x[1])
-    for a in player.champmap:
-        print(a)
+    print(sort_champmap(player))
 
 
 
