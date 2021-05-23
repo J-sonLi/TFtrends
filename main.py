@@ -15,46 +15,6 @@ header = {
     "Origin": "https://developer.riotgames.com",
     "X-Riot-Token": os.environ.get('RIOT_API')
 }
-#
-#
-# # Get player names using ingame-api
-# def get_playerNames():
-#     try:
-#         ssl._create_default_https_context = ssl._create_unverified_context
-#         live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
-#         live_response = json.loads(live_url.read())
-#         #print(live_response)
-#         for i in range(len(live_response)):
-#             playerName = live_response[i]['summonerName']
-#             playerPUUID = get_puuid(playerName)
-#             # # print(playerPUUID)
-#             playerList[playerName] = playerPUUID
-#             # # print(playerName,' -> ', playerPUUID)
-#
-#     except:
-#         print('You are not in game')
-#         return
-#
-#
-# # Get puuid from player name
-# def get_puuid(playerName):
-#     # GET puuid of summoner
-#     encodedplayerName = urllib.parse.quote(playerName)
-#     summoner_url = 'https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/'
-#     summoner_url += encodedplayerName
-#     #print(summoner_url)
-#     summoner_response = requests.get(url=summoner_url, headers=header)
-#     summoner_json = summoner_response.json()
-#     #print(summoner_json['puuid'])
-#     return summoner_json['puuid']
-#
-#
-# # Takes in puuid and returns match history list
-# def get_matchList(puuid):
-#     match_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/' + puuid + '/ids?count=10'
-#     match_response = requests.get(url=match_url, headers=header)
-#     match_json = match_response.json()
-#     return match_json
 
 # # -----------------------------------------------------------------------------------------------------------------------
 
@@ -108,13 +68,13 @@ def get_champsPLayed(player_name, player_puuid, player_matchlist, player_champma
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------
-# ssl._create_default_https_context = ssl._create_unverified_context
-# live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
-# live_response = json.loads(live_url.read())
+ssl._create_default_https_context = ssl._create_unverified_context
+live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
+live_response = json.loads(live_url.read())
 
-with open('tempgame.json') as f:
-    live_response=json.load(f)
-    #print(live_response)
+# with open('tempgame.json') as f:
+#     live_response=json.load(f)
+#     #print(live_response)
 playerList = [TftPlayer() for i in range(8)]
 for i, j in zip(playerList, range(8)):
     # print(i)
@@ -123,7 +83,6 @@ for i, j in zip(playerList, range(8)):
     i.matchlist = get_matchList(i.puuid)
     i.champmap = get_champsPLayed(i.name, i.puuid, i.matchlist, i.champmap)
     print(i.name, i.champmap)
-
 
 
 
