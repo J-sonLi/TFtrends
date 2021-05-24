@@ -39,6 +39,7 @@ async def async_puuid():
             tasks.append(task)
         await asyncio.gather(*tasks)
 
+
 # Get puuid from player name
 async def get_puuid(session, player):
     try:
@@ -52,6 +53,7 @@ async def get_puuid(session, player):
         print("API Key might be expired")
         sys.exit()
 
+
 async def async_matchlist():
     async with aiohttp.ClientSession(headers=header) as session:
         tasks = []
@@ -60,12 +62,14 @@ async def async_matchlist():
             tasks.append(task)
         await asyncio.gather(*tasks)
 
+
 # Takes in puuid and returns match history list
 async def get_matchList(session, player):
     match_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/' + player.puuid + '/ids?count=' + '10'
     async with session.get(match_url) as response:
         result_data = await response.json()
         player.matchlist = result_data
+
 
 async def async_champsplayed():
     async with aiohttp.ClientSession(headers=header) as session:
@@ -102,7 +106,6 @@ async def get_champsPLayed(session, player):
                     sys.exit()
 
 
-
 # prints champmap
 def sort_champMap(self):
     self.champmap = sorted(self.champmap.items(), key=lambda x: x[1])
@@ -130,41 +133,34 @@ def get_champdb():
     conn.close()
     return
 
+
 def main_program(playerList):
+    # Must be in game for this link to work
+    for attempt in range(2):
+        try:
+            ssl._create_default_https_context = ssl._create_unverified_context
+            live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
+            live_response = json.loads(live_url.read())
+            break
+        except ConnectionRefusedError as e:
+            print(e)
+            print('Retrying connection...')
+        except:
+            with open('tempgame.json') as f:
+                live_response = json.load(f)
+                break
+        else:
+            print('You may not be in  a TFT game')
+
     for player, j in zip(playerList, range(8)):
         player.name = live_response[j]['summonerName']
-
-
-
-
-
-
+    asyncio.run(async_puuid())
+    asyncio.run(async_matchlist())
+    asyncio.run(async_champsplayed())
 # ----------------------------------------------------------------------------------------------------------------------
                                                     # MAIN
-#Must be in game for this link to work
-for attempt in range(2):
-    try:
-        ssl._create_default_https_context = ssl._create_unverified_context
-        live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
-        live_response = json.loads(live_url.read())
-        break
-    except ConnectionRefusedError as e:
-        print(e)
-        print('Retrying connection...')
-    except:
-        with open('tempgame.json') as f:
-            live_response=json.load(f)
-            break
-    else:
-        print('You may not be in  a TFT game')
-
-# start = time.time()
 playerList = [TftPlayer() for i in range(8)]
 main_program(playerList)
-asyncio.run(async_puuid())
-asyncio.run(async_matchlist())
-asyncio.run(async_champsplayed())
-
 
 for player in playerList:
     print(player.name)
