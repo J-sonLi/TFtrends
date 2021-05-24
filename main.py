@@ -6,7 +6,9 @@ import urllib
 import ssl
 from collections import defaultdict
 import time
-
+import sqlite3
+import asyncio
+import aiohttp
 
 # User-Agent can be found at https://www.whatismybrowser.com/detect/what-is-my-user-agent
 # Get Riot development API key at https://developer.riotgames.com/
@@ -19,7 +21,7 @@ header = {
     "X-Riot-Token": os.environ.get('RIOT_API')
 }
 
-# # -----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------
 
 class TftPlayer:
     def __init__(self):
@@ -28,87 +30,146 @@ class TftPlayer:
         self.matchlist = []
         self.champmap = defaultdict(int)
 
-# Get player names using ingame-api
 
+async def async_puuid():
+    async with aiohttp.ClientSession(headers=header) as session:
+        tasks = []
+        for player in playerList:
+            task = asyncio.ensure_future(get_puuid(session, player))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
 # Get puuid from player name
-def get_puuid(self):
-    # GET puuid of summoner
-    encodedplayerName = urllib.parse.quote(self.name)
-    summoner_url = 'https://na1.api.riotgames.com/tft/summoner/v1/summoners/by-name/'
-    summoner_url += encodedplayerName
-    summoner_response = requests.get(url=summoner_url, headers=header)
-    summoner_json = summoner_response.json()
-    return summoner_json['puuid']
+async def get_puuid(session, player):
+    try:
+        encodedplayerName = urllib.parse.quote(player.name)
+        summoner_url = 'https://na1.api.riotgames.com/tft/summoner/v1/summoners/by-name/'
+        summoner_url += encodedplayerName
+        async with session.get(summoner_url) as response:
+            result_data = await response.json()
+            player.puuid = result_data['puuid']
+    except:
+        print("API Key might be expired")
+        sys.exit()
 
+async def async_matchlist():
+    async with aiohttp.ClientSession(headers=header) as session:
+        tasks = []
+        for player in playerList:
+            task = asyncio.ensure_future(get_matchList(session, player))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
 # Takes in puuid and returns match history list
-def get_matchList(self, count):
-    match_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/' + self.puuid + '/ids?count=' + str(count)
-    match_response = requests.get(url=match_url, headers=header)
-    match_json = match_response.json()
-    return match_json
+async def get_matchList(session, player):
+    match_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/by-puuid/' + player.puuid + '/ids?count=' + '10'
+    async with session.get(match_url) as response:
+        result_data = await response.json()
+        player.matchlist = result_data
+
+async def async_champsplayed():
+    async with aiohttp.ClientSession(headers=header) as session:
+        tasks = []
+        for player in playerList:
+            task = asyncio.ensure_future(get_champsPLayed(session, player))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
 
 # Takes in matchid and returns champions played
 #player_name, player_puuid, player_matchlist, player_champmap
-def get_champsPLayed(self):
-    for player_match in self.matchlist:
+async def get_champsPLayed(session, player):
+    for player_match in player.matchlist:
         matchid_url = 'https://americas.api.riotgames.com/tft/match/v1/matches/' + player_match
-        matchid_response = requests.get(url=matchid_url, headers=header)
-        matchid_json = matchid_response.json()
-        for attempt in range(2):
-            try:
-                #print(player_match)
-                #if len(matchid_json['info']['participants'])== 8:
-                for j in range(8):
-                    # Checks for correct PUUID and current set number (Set 5)
-                    if matchid_json['info']['participants'][j]['puuid']==self.puuid and matchid_json['info']['tft_set_number'] == 5:
-                        for champions in matchid_json['info']['participants'][j]['units']:
-                                self.champmap[champions['character_id']] += 1
-                        break
-                break
-            except KeyError:
-                print(matchid_json['status'])
-                time.sleep(1)
-        else:
-            print("An error has occured")
-            sys.exit()
+        async with session.get(matchid_url) as response:
+            for attempt in range(2):
+                try:
+                    matchid_json = await response.json()
+                    #print(matchid_json)
+                    #await asyncio.sleep(1)
+                    for j in range(8):
+                        # Checks for correct PUUID and current set number (Set 5)
+                        if matchid_json['info']['participants'][j]['puuid']== player.puuid and matchid_json['info']['tft_set_number'] == 5:
+                            for champions in matchid_json['info']['participants'][j]['units']:
+                                    player.champmap[champions['character_id']] += 1
+                            await asyncio.sleep(1)
+                            break
+                    break
+                except KeyError:
+                    print(matchid_json['status'])
+                else:
+                    print("An error has occured")
+                    sys.exit()
 
-    return self.champmap
 
 
 # prints champmap
-def sort_champmap(self):
-    self.champmap = sorted(player.champmap.items(), key=lambda x: x[1])
-    #print(self.champmap)
-    return self.champmap
+def sort_champMap(self):
+    self.champmap = sorted(self.champmap.items(), key=lambda x: x[1])
+    for i in self.champmap:
+        print(i)
+    #return self.champmap
+
+
+def get_champdb():
+    conn = sqlite3.connect('champmap.db')
+    c = conn.cursor()
+    try:
+        c.execute("SELECT * FROM champions")
+        print(c.fetchall())
+    except:
+        c.execute("CREATE TABLE IF NOT EXISTS champions (champ_id text, champ_cost integer, champ_count integer)")
+        with open('champions.json', 'r') as content:
+            championslist=json.load(content)
+        for champ in championslist:
+            #print(i['championId'],i['cost'])
+            c.execute("INSERT INTO champions VALUES(?, ?, ?)", (champ['championId'], champ['cost'], 0,))
+        conn.commit()
+        c.execute("SELECT * FROM champions")
+        print(c.fetchall())
+    conn.close()
+    return
+
+def main_program(playerList):
+    for player, j in zip(playerList, range(8)):
+        player.name = live_response[j]['summonerName']
+
+
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
                                                     # MAIN
 #Must be in game for this link to work
-ssl._create_default_https_context = ssl._create_unverified_context
-live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
-live_response = json.loads(live_url.read())
+for attempt in range(2):
+    try:
+        ssl._create_default_https_context = ssl._create_unverified_context
+        live_url = urllib.request.urlopen('https://127.0.0.1:2999/liveclientdata/playerlist')
+        live_response = json.loads(live_url.read())
+        break
+    except ConnectionRefusedError as e:
+        print(e)
+        print('Retrying connection...')
+    except:
+        with open('tempgame.json') as f:
+            live_response=json.load(f)
+            break
+    else:
+        print('You may not be in  a TFT game')
 
-# with open('tempgame.json') as f:
-#     live_response=json.load(f)
-#     #print(live_response)
+# start = time.time()
 playerList = [TftPlayer() for i in range(8)]
-for player, j in zip(playerList, range(8)):
-    # print(i)
-    player.name = live_response[j]['summonerName']
-    player.puuid = get_puuid(player)
-    player.matchlist = get_matchList(player,10)
-    player.champmap = get_champsPLayed(player)
+main_program(playerList)
+asyncio.run(async_puuid())
+asyncio.run(async_matchlist())
+asyncio.run(async_champsplayed())
+
+
+for player in playerList:
     print(player.name)
-    print(sort_champmap(player))
+    sort_champMap(player)
 
-
-
-
-
-
-
-
+# end = time.time()
+# print(end - start)
+#get_champdb()
