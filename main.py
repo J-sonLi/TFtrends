@@ -118,20 +118,27 @@ def get_champdb():
     conn = sqlite3.connect('champmap.db')
     c = conn.cursor()
     try:
-        c.execute("SELECT * FROM champions")
-        print(c.fetchall())
+        c.execute("UPDATE champions SET champ_count = 0")
+        conn.commit()
     except:
-        c.execute("CREATE TABLE IF NOT EXISTS champions (champ_id text, champ_cost integer, champ_count integer)")
+        c.execute("CREATE TABLE IF NOT EXISTS champions (champ_id text PRIMARY KEY, champ_cost integer, champ_count integer)")
         with open('champions.json', 'r') as content:
             championslist=json.load(content)
         for champ in championslist:
             #print(i['championId'],i['cost'])
             c.execute("INSERT INTO champions VALUES(?, ?, ?)", (champ['championId'], champ['cost'], 0,))
         conn.commit()
-        c.execute("SELECT * FROM champions")
-        print(c.fetchall())
     conn.close()
-    return
+
+def update_db(player):
+    conn = sqlite3.connect('champmap.db')
+    c = conn.cursor()
+    for champ in player.champmap:
+        c.execute("SELECT champ_count FROM champions WHERE champ_id = ?",(champ,))
+        temp = c.fetchone()[0] + player.champmap[champ]
+        c.execute("UPDATE champions SET champ_count = ? WHERE champ_id = ?",(temp,champ,))
+    conn.commit()
+    conn.close()
 
 
 def main_program(playerList):
@@ -157,15 +164,20 @@ def main_program(playerList):
     asyncio.run(async_puuid())
     asyncio.run(async_matchlist())
     asyncio.run(async_champsplayed())
+
+
 # ----------------------------------------------------------------------------------------------------------------------
                                                     # MAIN
 playerList = [TftPlayer() for i in range(8)]
 main_program(playerList)
 
+get_champdb()
 for player in playerList:
-    print(player.name)
-    sort_champMap(player)
+    # print(player.name)
+    # sort_champMap(player)
+    update_db(player)
+
+
 
 # end = time.time()
 # print(end - start)
-#get_champdb()
