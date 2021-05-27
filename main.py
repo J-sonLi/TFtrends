@@ -93,7 +93,7 @@ async def get_champsPLayed(session, player):
                     #await asyncio.sleep(1)
                     for j in range(8):
                         # Checks for correct PUUID and current set number (Set 5) and ranked queue
-                        if matchid_json['info']['participants'][j]['puuid']== player.puuid and matchid_json['info']['tft_set_number'] == 5 and matchid_json['info'][queue_id] == 1100:
+                        if matchid_json['info']['participants'][j]['puuid']== player.puuid and matchid_json['info']['tft_set_number'] == 5 and matchid_json['info']['queue_id'] == 1100:
                             for champions in matchid_json['info']['participants'][j]['units']:
                                     player.champmap[champions['character_id']] += 1
                             await asyncio.sleep(1)
