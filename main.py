@@ -92,8 +92,8 @@ async def get_champsPLayed(session, player):
                     #print(matchid_json)
                     #await asyncio.sleep(1)
                     for j in range(8):
-                        # Checks for correct PUUID and current set number (Set 5)
-                        if matchid_json['info']['participants'][j]['puuid']== player.puuid and matchid_json['info']['tft_set_number'] == 5:
+                        # Checks for correct PUUID and current set number (Set 5) and ranked queue
+                        if matchid_json['info']['participants'][j]['puuid']== player.puuid and matchid_json['info']['tft_set_number'] == 5 and matchid_json['info'][queue_id] == 1100:
                             for champions in matchid_json['info']['participants'][j]['units']:
                                     player.champmap[champions['character_id']] += 1
                             await asyncio.sleep(1)
@@ -120,6 +120,7 @@ def get_champdb():
     try:
         c.execute("UPDATE champions SET champ_count = 0")
         conn.commit()
+        conn.close()
     except:
         c.execute("CREATE TABLE IF NOT EXISTS champions (champ_id text PRIMARY KEY, champ_cost integer, champ_count integer)")
         with open('champions.json', 'r') as content:
@@ -172,12 +173,13 @@ playerList = [TftPlayer() for i in range(8)]
 main_program(playerList)
 
 get_champdb()
+start = time.time()
 for player in playerList:
-    # print(player.name)
-    # sort_champMap(player)
-    update_db(player)
+    print(player.name)
+    sort_champMap(player)
+    #update_db(player)
 
 
 
-# end = time.time()
-# print(end - start)
+end = time.time()
+print(end - start)
